@@ -1,0 +1,16 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define mtfmapper_VERSION_MAJOR @mtfmapper_VERSION_MAJOR@
+#define mtfmapper_VERSION_MINOR @mtfmapper_VERSION_MINOR@
+#define mtfmapper_VERSION_SUB @mtfmapper_VERSION_SUB@
+
+#define genrectangle_VERSION_MAJOR @genrectangle_VERSION_MAJOR@
+#define genrectangle_VERSION_MINOR @genrectangle_VERSION_MINOR@
+
+#define mtfmapper_ZLIB_FOUND @mtfmapper_ZLIB_FOUND@
+
+#include <string>
+const std::string mtfmapper_HTML_HELP_DIR = "@HTML_HELP_DIR@/html/mtf_mapper_user_guide.html";
+
+#endif

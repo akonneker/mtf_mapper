@@ -1,0 +1,27 @@
+<!DOCTYPE RCC><RCC version = "1.0">
+<qresource prefix="/Icons">
+<file alias="AppIcon64">mtf_mapper_gui.ico</file>
+<file alias="AppIcon128">mtf_mapper_gui_128.ico</file>
+<file alias="AppIcon256">mtf_mapper_gui_256.ico</file>
+<file alias="Channel_RGB_to_L">channel_rgb_to_l.svg</file>
+<file alias="Channel_Red">channel_red.svg</file>
+<file alias="Channel_Green">channel_green.svg</file>
+<file alias="Channel_Blue">channel_blue.svg</file>
+<file alias="Channel_Gray">channel_gray.svg</file>
+<file alias="SFR_pip_1">sfr_pip_1.svg</file>
+<file alias="SFR_pip_2">sfr_pip_2.svg</file>
+<file alias="SFR_pip_3">sfr_pip_3.svg</file>
+<file alias="SFR_pip_4">sfr_pip_4.svg</file>
+<file alias="SFR_pip_5">sfr_pip_5.svg</file>
+<file alias="SFR_pip_6">sfr_pip_6.svg</file>
+<file alias="SFR_pip_7">sfr_pip_7.svg</file>
+<file alias="Gamma_linear">gamma_linear.svg</file>
+<file alias="Gamma_two">gamma_two.svg</file>
+<file alias="Warning">warning_icon.svg</file>
+</qresource>
+<qresource prefix="/Images">
+<file alias="ManualROIHelp">manual_roi_help.png</file>
+<file alias="ManualROIHelp_p2">manual_roi_help_p2.png</file>
+<file alias="ManualROIHelp_p3">manual_roi_help_p3.png</file>
+</qresource>
+</RCC>

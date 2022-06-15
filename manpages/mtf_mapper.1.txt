@@ -1,0 +1,377 @@
+MTF_MAPPER(1)
+=============
+:doctype: manpage
+:Author: Frans van den Bergh
+:Email: fvdbergh@gmail.com
+
+
+NAME
+----
+mtf_mapper - compute MTF50 edge sharpness measure in images
+
+SYNOPSIS
+--------
+*mtf_mapper* ['OPTIONS'] 'INPUT_IMAGE' 'OUTPUT_DIR'
+
+DESCRIPTION
+-----------
+*mtf_mapper* computes the edge acuity (sharpness) of slanted edges in images. 
+It automatically detects dark rectangular objects on light backgrounds, 
+and computes the MTF50 values across each of the edges. Output takes several
+forms (see *-p*, *-s*, *-a* and *-q* output options). To test *mtf_mapper*,
+images with rectangles containing known MTF50 values can be generated with 
+*mtf_generate_rectangle*.
+
+OPTIONS
+-------
+*-t* 'threshold', *--threshold* 'threshold'::
+Specify the dark object threshold, with a default of 0.55. 
+Lower values are required if your dark objects are light relative to the 
+background, e.g., gray rectangles rather than black rectangles. You can try
+lower values, e.g., 0.3 or even 0.2 if MTF Mapper does not appear to detect
+any dark objects.
+
+*--threshold-window* 'fraction'::
+Specify the fraction of the smaller image dimension (height or width) that
+will be used as a window size during automatic thresholding to detect dark
+objects (see *-t*). The default of 0.3333 works well when the test chart has
+a white background. If your dark targets tend to have some other chart
+feature surrounding them (think QA-62 Scanner targets) then you can try to
+reduce this fraction; choosing the fraction to be roughly equal to the size
+of the dark target (as a fraction of image height) should work.
+
+*-l*, *--linear*::
+Linear input mode; assumes that an 8-bit input image has a linear intensity
+scale. The default is to assume that 8-bit input images have an sRGB gamma
+intensity profile (approximately gamma 2.2).
+
+*--pixelsize* 'size'::
+Specify the sensor's pixel size (pitch) in microns. This option implicitly
+switches the MTF50 output units (for some output types) to line pairs per mm, or
+lp/mm (the default is cycles per pixel, or c/p).
+
+*--bayer* 'red|green|blue|none'::
+Process only the specified Bayer sites. This option can be used to bypass the effects of Bayer demosaicing interpolation when
+suitable raw images (e.g., dcraw -d output) are used. Specifying this option when a demosaiced image is provided will
+not produce the expected result, i.e., you must provide a raw image for this option to
+work correctly. Keep in mind that Bayer red and blue each cover only 25% of the sensor, so
+your edges will have to be 4 times longer to maintain the same signal-to-noise ratio. Minimum
+recommended edge lengths are thus 35 pixels for gray or interpolated images, 70 pixels for green
+Bayer sites, and 140 pixels for red and blue Bayer sites. Aim for edges of at least 200 pixels for
+best results on red and blue sites. See *--cfa-pattern* so specify the Bayer
+pattern of your raw image.
+
+*--cfa-pattern* 'rggb|bggr|grbg|gbrg'::
+Select the Bayer pattern to use when the *--bayer* option has been
+specified. The default is rggb, which appears to be the most popular choice
+amongst DSLRs.
+
+*--esf-model* 'kernel|loess'::
+Choose the algorithm that MTF Mapper uses to construct the Edge Spread
+Function (ESF) with. The `loess' algorithm is recommended, unless you are
+trying to produce results that are compatible (ahem, `roughly similar' is more like
+it) with older versions of MTF Mapper (pre- version 0.7.16).
+
+*--single-roi*::
+Treat the entire input image as the region of interest (ROI). This option
+is only intended for use with small cropped images containing only a single
+edge, typically if you cropped your ROI out of some larger image. Use this
+if you are performing your slanted-edge measurements with a backlit razor
+blade, or if you are working with an incompatible test chart (e.g., an
+older ISO 12233 chart). This option has largely superseded the *-b* option.
+
+*--zscale* 'scale-factor'::
+Adjust the minimum value of the z-axis scale of the 3D plots produced with
+the *--surface* output option. A value of 0 means the z-axis scale starts at zero, 
+and 1.0 means the z-axis starts from minimum MTF50 measurement (thus emphasizing
+local differences).
+
+*--logfile* 'filename'::
+Logger output written to _filename_ in stead of standard out.
+
+*--gnuplot-width* 'pixels'::
+Width of images rendered by gnuplot, typically affecting the output images
+of *--lensprofile*, *-s*, and *-p*.
+
+*-b*,  *--border*::
+Add a white border of 100 pixels to the image. This option might be useful
+if your image contains only a single black target (e.g., rectangle) with a
+thin white border, or if your image sides clips some of your black test
+chart targets. Actually, this option is a kludge to fool MTF Mapper's
+automatic target detection, so you should not normally need this. Also see
+*--single-roi* for the correct way of dealing with single-edge images.
+
+*--snap-angle* 'angle'::
+Snap all edge angles to _angle_. Angles are snapped to the closest value modulo 90 degrees, i.e., specifying an
+angle of 4 degrees will force edge orientations to one of the following: 
+4, -4, 86, or 94 degrees. This option should be used with care, and is only appropriate
+if you are using synthetic images with a known edge orientation.
+
+*-g* 'angle', *--angle* 'angle'::
+Only report MTF50 values on edges with an orientation of 'angle' degrees in
+raw output mode (-r)
+
+*--autocrop*::
+Automatically crop the input image to the chart area. The chart is assumed to be
+brighter than the background; the automatic cropping will try to remove the
+darker background. This option is mostly intended to speed up processing,
+and really should only be used if the background area is large in comparison
+to the test chart area.
+
+*--imatest-chart*::
+Automatically crop the input image so that the black bars at the top and
+bottom of Imatest-style charts (e.g., SFRplus) are suppressed, thus allowing
+full automatic processing of all of the square targets found in the chart.
+You may want to use a lower threshold value (*-t*) of 0.4 or even lower when
+using *--imatest-chart* to ensure that all the square targets are detected.
+This option should not be used with native MTF Mapper test charts.
+
+*--mtf* 'contrast'::
+By default MTF Mapper computes MTF50, i.e., the resolution (in lp/mm or
+cycles/pixel) at which the SFR curve first reaches a contrast of 50%. This
+option allows you to change the target contrast value to compute MTF20, for
+example. Valid 'contrast' values are in the range [10, 90], and will be
+clamped to this range if necessary. This option affects all outputs,
+including the Annotated image, Profile, Grid and Focus position outputs; 
+only the SFR outputs are unaffected.
+
+*--gnuplot-executable* 'filepath'::
+Specify the full path to the gnuplot executable. Defaults to 
+_/usr/bin/gnuplot_, which is usually correct on most Linux distributions
+
+*-h*::
+Displays usage information
+
+
+OUTPUT TYPE RELATED OPTIONS
+---------------------------
+*-a*, *--annotate*::
+Annotated output mode. If Annotate mode is enabled,
+*mtf_mapper* produces an output file called _annotated.png_
+wherein each edge is annotated with its MTF50 value. Good quality edges are
+annotated in Cyan, with Yellow and Red annotation indicating progressively
+poorer edge quality (usually related to edge orientation and length).
+
+*-s*, *--surface*::
+Surface output mode. Surface mode (enabled by default) generates two output plots:
+a color-graded 2D view of the MTF50 values across the image, and a 3D surface
+plot of the same data.
+
+*-p*, *--profile*::
+Profile output mode. If Profile mode is enabled, *mtf_mapper* produces a plot
+(_profile_image.png_) showing a side-view of the MTF50 values. This mode is used to determine
+whether a camera is front- or back-focusing. A special test chart must be
+generated with *mtf_generate_test_chart* for this mode to work correctly.
+
+*-r*, *--raw*::
+Raw output mode: Dumps MTF50 values to a file called _raw_mtf_values.txt_.
++
+NB: The *-q* output option also produces files containing the MTF50 values, but
+each entry of that output also provides the image coordinates of the
+measurement.
+
+*-e*, *--esf*::
+Produce edge spread function (ESF) outputs. Each edge will correspond to one row in an
+output file called _raw_esf_values.txt_.
+Each row will contain 256 samples, corresponding to a window of 32 pixels centered on the edge,
+oversampled by a factor of 8, i.e., consecutive samples are 1/8 pixel apart.
+There is currently no simple way to identify which edge in the input image ends up in
+a particular row. If your input image contains a single square, then you can pick any row.
+
+*-f*, *--sfr*::
+Produce spatial frequency response (SFR) curve outputs. Each edge will correspond to one row
+in an output file called _raw_sfr_values.txt_.
+Each row starts with the edge orientation (in degrees), followed by 64 values corresponding to
+the contrast measured at a frequency resolution of 1/64 cycles per pixel. In other words, the 64 values
+span the frequency range [0,1) cycles per pixel. See *-e* for advice on matching rows to edges.
++
+By default, this is an SFR curve, i.e., the DC component is always normalized to 1.0. See 
+*--absolute-sfr* switch for producing true MTF curves.
++
+NB: The *-q* output option also produces files containing the SFR curve, but
+each entry of that output also provides the image coordinates of the
+measurement.
+
+*--absolute-sfr*::
+Do not normalize SFR curve, i.e., DC component is not normalized to 1.0. This is useful when evaluating
+the MTF response of algorithms that may reduce overall edge contrast.
+
+*--nosmoothing*::
+Disable SFR curve (MTF) smoothing. By default, MTF Mapper will apply
+Savitzky-Golay filters to the SFR curve to improve its appearance. The only
+known disadvantage of this smoothing is that the sharp valley surrounding
+the first zero of the SFR (if present) can be over-smoothed, in which case
+the *--nosmoothing* option is recommended.
+
+*-q*, *--edges*::
+A better choice than either *-r* or *-f*. This option produces two output
+files called _edge_mtf_values.txt_ and _edge_sfr_values.txt_, both of which
+combine edge location with the MTF measurement.
++
+Each row of the _edge_mtf_values.txt_ file contains six space-separated columns: _block_id_
+_edge_x_ _edge_y_ _mtf50_ _corner_x_ _corner_y_. The _block_id_ can safely
+be ignored (it depends on the order in which target squares were processed).
+The pair (_edge_x_, _edge_y_) denote the pixel coordinates of the centroid
+of the edge, and _mtf50_ is the MTF50 value in cycles per pixel (default),
+or in lp/mm if the *--pixelsize* option was specified. Lastly, the pair
+(_corner_x, _corner_y) denote the pixel coordinates of the corner of the
+target (black square) associated with this edge, and can be safely ignored.
++
+The format of the _edge_sfr_values.txt_ file is similar: each row starts with
+five columns: _block_id_ _edge_x_ _edge_y_ _edge_angle_ _radial_angle_,
+followed by 64 more floating point values denoting the SFR. The _edge_angle_
+column denotes the orientation of the edge relative to the image
+rows/columns, modulo 45 degrees. This angle should perferably be at least 2
+degrees but less than 44 degrees for best results. The fifth column,
+_radial_angle_, is just the angle of the radial line from the image centre
+to the edge centroid, thus it can be used to determine whether an edge is in
+a Sagittal or Meridional orientation with respect to the image centre, which
+is assumed to be centered on the test chart.
++
+The SFR part (the last 64 values on each line of _edge_sfr_values.txt_)
+represents the contrast values of the SFR (or MTF, if you prefer) sampled at
+spatial frequencies of i/64 cycles per pixel for i from 0 to 63 inclusive.
++
+If you use the *--full-sfr* option together with *-q*, the SFR component of
+each line of _edge_sfr_values.txt_ will comprise 128 values (rather than 64), 
+and the corresponding spatial frequencies are i/64 cycles per pixel for i from 0 to 127 inclusive.
++
+NB: The only reliable, safe way to compare the output of MTF Mapper between
+different images captured using the same camera (say, an f/2.8 vs an f/4
+image capture) is to use the pixel coordinates (_edge_x_, _edge_y_) of a 
+measurement from image A to find the closest corresponding measurement from
+image B, assuming you do not move around the camera too much, or rotate the
+chart or something like that (in which case you can use the Monkres
+assignment algorithm to calculate the correct pairing). Please do not rely
+on the order of the rows of the _edge_mtf_values.txt_ and _edge_sfr_values.txt_
+files.
+
+*--full-sfr*::
+Output the full SFR/MTF curve (up to 2 c/p) when combined with *-q* or *-f*.
+The default is to only output the curve up to 1 c/p. Relatively few cameras
+have meaningful contrast after 1 c/p, so take note that noise tends to
+dominate the MTF curve there.
+
+*--lensprofile*::
+This output option produces a Meridional / Sagittal MTF chart similar to
+those published by lens manufacturers. It requires a _lensgrid_ type MTF
+Mapper test chart image (but will work with older _grid_ style charts too).
+The resulting output _lensprofile.png_ is a plot of contrast vs radial
+distance from the centre of the image, at three specified spatial
+resolutions (see *--lp1*, *--lp2*, *--lp3*). It is recommended that the
+*--pixelsize* option is used in conjunction with the *--lensprofile* option
+so that the units of the chart are in mm for the x-axis, and that the
+spatial resolutions are in lp/mm (otherwise the x-axis units are pixels, and
+the spatial resolutions are in c/p, which is not a common choice for this
+type of chart).
+
+*--chart-orientation*::
+Visualize chart orientation relative to the camera to assist in aligning the
+camera perpendicular to the chart. This option requires that
+the input image contains circular fiducial markers (e.g., _focus_ and
+_lensgrid_ MTF Mapper chart types), and produces an output file called
+_chart_orientation.png_ which illustrates graphically the yaw/pitch/roll
+angles of the test chart relative to the camera. The objective is to
+iteratively adjust the chart orientation to bring the yaw and pitch angles
+as close to zero as possible, preferrably below 0.5 degrees, to ensure that
+the camera's optical axis is perpendicular to the test chart. Once the
+alignment is satisfactory, other outputs (e.g., *-a*, or *--lensprofile*)
+can be derived from subsequent images of a _lensgrid_ style chart. For this
+option to work the correct lens focal ratio must be specified (see
+*--focal-ratio*).
+
+*--focal-ratio* 'ratio'::
+Specify the focal ratio for use in chart orientation estimation. The focal ratio
+is computed as focal_length / sensor_width, e.g., 50 mm / 23.6 mm when using
+a 50 mm lens on an APS-C sized DSLR. This option is only needed if you
+combine it with the *--chart-orientation* option.
+
+*--lp1* 'resolution', *--lp2* 'resolution', *--lp3* 'resolution'::
+Specify the three spatial resolutions to use when plotting a
+*--lensprofile*.
+
+*--focus*::
+This output type produces a visualization of the peak focus location.
+A special MTF Mapper chart type is required (_focus_), which
+should be imaged at a 45-degree tilt with respect to the camera. This chart
+is not suitable for use with camera autofocus; rather, it is intended to
+calibrate a manual focus lens, or to measure focus shift in a lens. Please
+see the MTF Mapper user guide for more information.
++
+NB: Note that the *--focus* output option is incompatible with most other
+output options (e.g., *-a*, *-s*, *--lensgrid*, *-q*, etc.), so do not use
+this option unless you are sure you want to.
+
+*--mfprofile*::
+This output type produces a visualization of the curve formed by the
+intersection of the "'surface of best focus'" and the test chart.
+A special MTF Mapper chart type is required (_mfperspective_), which
+should be imaged at a 45-degree tilt with respect to the camera. This chart
+is intended for manual focus operation since the chart does not contain
+suitable central features for autofocus operation.
++
+NB: Note that the *--mfprofile* output option is incompatible with most other
+output options (e.g., *-a*, *-s*, *--lensgrid*, *-q*, etc.), so do not use
+this option unless you are sure you want to.
+
+LENS DISTORTION RELATED OPTIONS
+-------------------------------
+*--esf-sampler* 'line|quadratic|piecewise-quadratic|deferred'::
+Choose the approximation used to model the curve of image edges (default is
+_piecewise-quadratic_). If your image has
+absolutely no radial lens distortion, then _line_ is optimal. The
+_quadratic_ and _piecewise-quadratic_ approximations do what their names
+suggest: the (assumed) straight edges of the target objects on the test
+chart are modelled using a (piecewise-) quadratic curve. The _deferred_
+aproximation is only available when an overall lens distortion model is
+specified using *--equiangular*, *--stereographic*, or
+*--optimize-distortion* options; selecting one of these options
+automatically forces *--esf-sampler*=_deferred_.
+
+*--stereographic* 'focal length(mm)'::
+Treat input image as stereographic mapping (fisheye) with the specified focal length
+in mm. With this option, the annotated output image (output option *-a*)
+will be unmapped, i.e., in its rectilinear equivalent mapping, but MTF
+measurements are still made in the original (distorted) image. Note that
+this option requires a pixel pitch to be specified using the *--pixelsize*
+option.
+
+*--equiangular* 'focal length(mm)'::
+Treat input image as equi-angular mapping (fisheye) with the specified focal length
+in mm. With this option, the annotated output image (output option *-a*)
+will be unmapped, i.e., in its rectilinear equivalent mapping, but MTF
+measurements are still made in the original (distorted) image. Note that
+this option requires a pixel pitch to be specified using the *--pixelsize*
+option.
+
+*--optimize-distortion*::
+A two-step process is followed to compensate for radial lens distortion.
+First, a two-parameter division model is fitted to obtain a distortion model
+of the lens, followed by MTF measurements in the original (distorted) image,
+but using the undistorted image to guide the process. The annotated output
+image (output option *-a*) is based on the undistorted image. This option
+works best when the test chart (preferrably the _lensgrid_ chart) fills the
+frame, and the average edge length is 200 pixels or more.
++
+Note that this option can, in practice, replace the use of the *--stereographic*
+and *--equiangular* undistortion methods. Also note that it is not necessary
+to undistort the image (to produce straight target edges) to obtain accurate
+MTF measurements. By default, MTF Mapper now uses a piecewise-quadratic
+curve to model target edges, so the three undistortion methods
+(*--stereographic*, *--equiangular*, and *--optimize-distortion*) are mostly
+for research purposes.
+
+*--no-undistort-crop*::
+By default, MTF Mapper will estimate which part of the undistorted image is
+usable, i.e., not stretched too much, and crop the output accordingly. This
+option will override the cropping when used with the *--equiangular* and
+*--stereographic* options. This can produce very large output images, so use
+with care.
+
+
+
+
+
+SEE ALSO
+--------
+mtf_generate_rectangle, mtf_generate_test_chart, mtf_mapper_gui.

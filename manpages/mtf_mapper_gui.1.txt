@@ -1,0 +1,26 @@
+MTF_MAPPER_GUI(1)
+=================
+:doctype: manpage
+:Author: Frans van den Bergh
+:Email: fvdbergh@gmail.com
+
+
+NAME
+----
+mtf_mapper_gui - GUI for mtf_mapper
+
+SYNOPSIS
+--------
+*mtf_mapper_gui*
+
+DESCRIPTION
+-----------
+*mtf_mapper_gui* is a QT5 graphical frontend to mtf_mapper. Only a subset of
+*mtf_mapper functionality* is available through the GUI.
+
+SEE ALSO
+--------
+mtf_generate_rectangle, mtf_generate_test_chart, mtf_mapper.
+
+
+

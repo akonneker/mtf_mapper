@@ -1,0 +1,313 @@
+0a. Add an option to increase the size of the analysis window (i.e., more
+than 16 pixels each side of the edge)
+0b. Add a light-weight gui that allows the user to select an ROI.
+
+1. use the knowledge of block shapes to improve systematic edge orientation
+estimation
+2. separate left/right profiles (can be used to check if chart is set-up
+correctly)
+3. improve handling of very small rectangles, especially when roi buffers
+overlap
+4. make profiles more robust, i.e., resolve reference block orientation
+issues (have not seen problems here in a while ...)
+5. Perspective chart can be optimized to keep blocks more aligned with the
+meridional direction (this should not really affect overall focus 
+position, though)
+6. can improve robustness to background objects by measuring the intensity
+variance within each block, e.g, comparing to half variance to bottom half
+variance and so on. this will weed out non-uniform blocks. (low priority,
+unless people really have a lot of background clutter)
+7. We can improve contamination detection by performing a distance transform
+on the connected component label image, i.e., each pixel in the gradient
+image is tagged with the label of its closest connected component. This will
+help a lot as a "first pass" filter to remove pixels (with non-zero
+gradient) that do not form part of the edge we are trying to analyze. This
+does not resolve problems with small specks that do not form their own
+connected components after thresholding.
+8. Edge orientation should be more closely related to orthogonal regression:
+the scale of x and y coordinates are the same. What happens if strong
+astigmatism is present (does this change the equal-scale assumption).
+Anyhow, if we assume the x and y coordinates in the ROI are error-free, then
+the only remaining error source is the weighting of each point (which is
+just the gradient magnitude). Plain OLS models the data as
+Y_i = B0 + B1*X_i + eps_i
+where eps_i ~ N(0, sigma)
+Orthogonal regression models the data as
+Y_i = eti_i + eps_i
+X_i = psi_i + delta_i
+where eps_i ~ N(0, sigma_e) and delta_i ~ N(0, sigma_d) if we assume the
+errors are uncorrelated (are they?)
+The Orthogonal regression then actually fits the model
+eta_i = B0 + B1*psi_i
+(the underlying true model)
+If we assume that sigma_e == sigma_d == 0, i.e., the Y_i and X_i are
+essentially error-free (because they really are just the centroid of the
+pixels in the ROI), then instead we could model the weights (image gradient
+magnitude) as the variable with the error. This makes sense, because sensor
+noise would manifest in this way (and strictly speaking, the sensor noise
+would lead to a larger uncertainty in image gradient magnitude in the bright
+part of the image, which we could model explicitly by using the intensity as
+part of the weight, or we could try to measure this directly).
+Currently, we implement weighted PCA to estimate the edge orientation. This
+boils down to computing the weighted covariance matrix:
+cov = sum { w*[x-mu_x y-mu_y]*[x-mu_x y-mu_y]' } over all pixels with
+non-zero weights w_i.
+If the uncertainty in the weight is modelled, then it becomes
+cov = sum { (W + phi)*[x-mu_x y-mu_y]*[x-mu_x y-mu_y]' }
+where W represents the true weight (true gradient intensity, in this case)
+and phi_i ~ N(0, sigma_p), where sigma_p is the intensity noise standard
+deviation.
+[ From Koren and Carmel, we see that PCA strives to maximize the sum of all
+squared distances. 
+  For a symmetric nxn matrix A, the eigenvectors u_i are the maximiser of
+  max_{v_1,...,v_n} sum_i (v_i)' * A * v_i
+  Since v_i are column vectors, the sum above is scalar.
+  I suppose in this case, A is the covariance matrix cov.
+]
+Focusing just on x (to simplify things), we have
+cov_xx = sum { (W+phi)*(x-mu_x)^2 }
+... to be continued
+
+==== Jack Hogan's wish list ====
+Sure, imo it would be better as a separate executable anyways. By 'resized'
+I assume that you mean zoom and pan functions that would allow one to see
+the region of interest large on one's monitor at >100% for accuracy of
+selection. Being able to specify a default Width and Height would also be
+nice: just click on the edge in the center of the desired ROI and the area
+centered on the click (with the specified dimensions and properly aligned
+for RGGB) is shown and if confirmed cropped to the specified TIF.
+
+    Looking at your current workflow, would it help if this becomes just
+another flag that is passed to mtf_mapper.exe ? I.e., specifying the
+"--crop" flag launches the new light-weight gui, but otherwise you are still
+just calling mtf_mapper.exe as usual?
+
+That would be very helpful. (EDIT: I don't know what happened, but the rest
+of my post ended up below the 'show signature' line - so if you do not see
+it, click on the 'show signature' line to reveal it)
+-- hide signature --
+
+crop = launches the gui and returns to mtf_mapper the RGGB aligned ROI
+selected by the operator (you may want to allow the selection of multiple
+ROIs); and
+
+--croparea followed by X Y W H = crops the desired RGGB aligned ROI without
+-- launching the GUI.
+
+While we are at it, with such a function it would also be useful to have
+mtf_mapper generate a single output text file (--full) with the same name as
+the input TIF containing the file name, coordinates of the ROI, (optional: a
+little exif data like camera and lens model, f/, ss, ISO, FL) and mtf50,
+esf, lsf, sfr data plus data for each of --bayer red blue green.
+
+Calling
+
+mtf_mapper DSC00051.tif -arbef --crop --full
+
+would then open DSC00051.tif in the lightweight GUI and let the operator
+choose the ROI(s), then process them and return file(s) called
+DSC00051_x.txt (x being the number corresponding to a particular ROI when
+more than one ROI was selected) with full content as per the example below -
+this is what my batch file does in a convoluted way now.
+
+All nice to haves, so don't sweat them
+
+Jack
+
+Actual SAMPLE OUTPUT of Batch file (see bottom) used to generate the data in
+the graph shown in my post to The_Suede just above. This is the file I
+normally then import into Excel for fitting and graphing.
+Output_DSC00051.txt:
+
+MTF Mapper Output for file DSC00051.tif
+Crop X Y W H
+Horizontal 2600 2232 300 180
+Vertical 3132 1536 180 300
+
+(MTF50)
+1 1 0,210411 1
+Green
+1 1 0,229142 1
+Blue
+1 1 0,223689 1
+Red
+1 1 0,196651 1
+
+(MTF) Spatial Frequency Response (All channels)
+0,001555 1 1,000114 1,000315 1,000417 1,000497....
+0,009764 1 1,000009 1,000092 1,000349 1,000776....
+9,40589 1 0,990137 0,963713 0,927934 0,889264....
+0,009764 1 1,000373 1,00125 1,001928 1,001711....
+
+Green
+0,001555 1 1,000043 1,00012 1,000167 1,000222....
+0,009764 1 1,000068 1,000233 1,000407 1,00051....
+9,40589 1 0,989814 0,962506 0,925392 0,885075...
+0,009764 1 1,000183 1,000588 1,00087 1,000778...
+
+Blue
+...
+
+(ESF) Edge Spread Function
+2029,25641 2029,25641 2029,25641 2029,25641 2050,546296 2107,375...
+52263 52263 52263 52263 52263 52263...
+2357,470588 2338,307692 2294,576923 2294,25 2337,607143 2325,208333...
+2015,454545 2015,454545 2015,454545 2015,454545 2088,395349 2163,3...
+
+Green
+1348,487179 1348,487179 1348,487179 1348,487179 1362,333333 1385,375...
+52263 52263 52263 52263 52263 52263...
+...
+
+My current BATCH FILE
+
+echo Usage: mtf.bat filename hXoff hYoff width height vXoff vYoffset
+(optional -t 0.x threshold)
+
+gdal_translate -srcwin %2 %3 %4 %5 %1 h_%~n1.tif
+
+gdal_translate -srcwin %6 %7 %5 %4 %1 v_%~n1.tif
+
+mtf_mapper h_%~n1.tif %CD% -arbef --bayer green %8 %9
+
+echo Horizontal Crop Green >> %~n1_mtf50.txt
+
+type raw_mtf_values.txt >> %~n1_mtf50.txt
+
+echo H Crop Green >> %~n1_sfr.txt
+
+type raw_sfr_values.txt >> %~n1_sfr.txt
+
+echo H Crop Green >> %~n1_esf.txt
+
+type raw_esf_values.txt >> %~n1_esf.txt
+
+mtf_mapper h_%~n1.tif %CD% -arbef --bayer blue %8 %9
+
+echo H Crop Blue >> %~n1_mtf50.txt
+
+type raw_mtf_values.txt >> %~n1_mtf50.txt
+
+echo H Crop Blue >> %~n1_sfr.txt
+
+type raw_sfr_values.txt >> %~n1_sfr.txt
+
+echo H Crop Blue >> %~n1_esf.txt
+
+type raw_esf_values.txt >> %~n1_esf.txt
+
+mtf_mapper h_%~n1.tif %CD% -arbef --bayer red %8 %9
+
+echo H Crop Red >> %~n1_mtf50.txt
+
+type raw_mtf_values.txt >> %~n1_mtf50.txt
+
+echo H Crop Red>> %~n1_sfr.txt
+
+type raw_sfr_values.txt >> %~n1_sfr.txt
+
+echo H Crop Red>> %~n1_esf.txt
+
+type raw_esf_values.txt >> %~n1_esf.txt
+
+mtf_mapper h_%~n1.tif %CD% -arbef %8 %9
+
+echo H Crop RAW WB >> %~n1_mtf50.txt
+
+type raw_mtf_values.txt >> %~n1_mtf50.txt
+
+echo H Crop RAW WB >> %~n1_sfr.txt
+
+type raw_sfr_values.txt >> %~n1_sfr.txt
+
+echo H Crop RAW WB >> %~n1_esf.txt
+
+type raw_esf_values.txt >> %~n1_esf.txt
+
+echo *********************
+
+echo. >> %~n1_sfr.txt
+
+echo. >> %~n1_esf.txt
+
+mtf_mapper v_%~n1.tif %CD% -arbef --bayer green %8 %9
+
+echo Vertical Crop Green >> %~n1_mtf50.txt
+
+type raw_mtf_values.txt >> %~n1_mtf50.txt
+
+echo V Crop Green >> %~n1_sfr.txt
+
+type raw_sfr_values.txt >> %~n1_sfr.txt
+
+echo V Crop Green >> %~n1_esf.txt
+
+type raw_esf_values.txt >> %~n1_esf.txt
+
+mtf_mapper v_%~n1.tif %CD% -arbef --bayer blue %8 %9
+
+echo V Crop Blue >> %~n1_mtf50.txt
+
+type raw_mtf_values.txt >> %~n1_mtf50.txt
+
+echo V Crop Blue >> %~n1_sfr.txt
+
+type raw_sfr_values.txt >> %~n1_sfr.txt
+
+echo V Crop Blue >> %~n1_esf.txt
+
+type raw_esf_values.txt >> %~n1_esf.txt
+
+mtf_mapper v_%~n1.tif %CD% -arbef --bayer red %8 %9
+
+echo V Crop Red >> %~n1_mtf50.txt
+
+type raw_mtf_values.txt >> %~n1_mtf50.txt
+
+echo V Crop Red>> %~n1_sfr.txt
+
+type raw_sfr_values.txt >> %~n1_sfr.txt
+
+echo V Crop Red>> %~n1_esf.txt
+
+type raw_esf_values.txt >> %~n1_esf.txt
+
+mtf_mapper v_%~n1.tif %CD% -arbef %8 %9
+
+echo V Crop RAW WB >> %~n1_mtf50.txt
+
+type raw_mtf_values.txt >> %~n1_mtf50.txt
+
+echo V Crop RAW WB >> %~n1_sfr.txt
+
+type raw_sfr_values.txt >> %~n1_sfr.txt
+
+echo V Crop RAW WB >> %~n1_esf.txt
+
+type raw_esf_values.txt >> %~n1_esf.txt
+
+echo **********************
+
+Echo MTF Mapper Output for file %~nx1 > Output_%~n1.txt
+
+echo Crop X Y W H >> Output_%~n1.txt
+
+echo Horizontal %2 %3 %4 %5 >> Output_%~n1.txt
+
+Echo Vertical %6 %7 %5 %4 >> Output_%~n1.txt
+
+Echo (MTF50) >> Output_%~n1.txt
+
+Type %~n1_mtf50.txt >> Output_%~n1.txt
+
+echo. >> Output_%~n1.txt
+
+Echo (MTF) Spatial Frequency Response >> Output_%~n1.txt
+
+Type %~n1_sfr.txt >> Output_%~n1.txt
+
+echo. >> Output_%~n1.txt
+
+Echo (ESF) Edge Spread Function >> Output_%~n1.txt
+
+Type %~n1_esf.txt >> Output_%~n1.txt
